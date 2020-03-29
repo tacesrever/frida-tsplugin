@@ -259,7 +259,17 @@ function init(mod: { typescript: typeof tslib }) {
                 }
                 let parent = findInfoProviderForExpr(source, funcPropAccExpr.expression);
                 if(parent === undefined) return undefined;
-                if(funcName === 'overload') {
+                if(funcName === 'call') {
+                    let method = parent as MethodInfoProvider;
+                    let argTypes = findArgTypesForCallExpr(source, callExpr);
+                    if(argTypes === undefined) return undefined;
+                    argTypes = argTypes.slice(1);
+                    return method.getOverloadInfoProvider(argTypes).getReturnInfoProvider();
+                } else if (funcName === 'apply') {
+                    let method = parent as MethodInfoProvider;
+                    // TODO: detact apply argTypes
+                    return method.getReturnInfoProvider();
+                } else if(funcName === 'overload') {
                     let method = parent as MethodInfoProvider;
                     let argTypes = findArgTypesForCallExpr(source, callExpr);
                     if(argTypes === undefined) return undefined;
