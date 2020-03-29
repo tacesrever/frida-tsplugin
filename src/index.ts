@@ -333,7 +333,7 @@ function init(mod: { typescript: typeof tslib }) {
                                 break;
                         }
                     }
-                    let writeExpr = getNodeAtPosition(source, writeRef.reference.textSpan.start).parent;
+                    let writeExpr = getNodeAtPosition(source, writeRef.reference.textSpan.start + 1).parent;
                     while(writeExpr.kind === tslib.SyntaxKind.PropertyAccessExpression)
                         writeExpr = writeExpr.parent;
                     if(! [
@@ -403,7 +403,15 @@ function init(mod: { typescript: typeof tslib }) {
                         return (current as tslib.StringLiteral).text;
                     case tslib.SyntaxKind.Identifier:
                         const writeRef = findLastWriteRef(source.fileName, current.getStart());
-                        const writeExpr = getNodeAtPosition(source, writeRef.reference.textSpan.start).parent;
+                        let writeExpr = getNodeAtPosition(source, writeRef.reference.textSpan.start + 1).parent;
+                        while(writeExpr.kind === tslib.SyntaxKind.PropertyAccessExpression)
+                            writeExpr = writeExpr.parent;
+                        if(! [
+                            tslib.SyntaxKind.BinaryExpression, 
+                            tslib.SyntaxKind.PropertyAssignment,
+                            tslib.SyntaxKind.VariableDeclaration,
+                        ].includes(writeExpr.kind))
+                            return undefined;
                         current = writeExpr.getChildAt(2);
                         break;
                     default:
