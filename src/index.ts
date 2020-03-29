@@ -157,8 +157,6 @@ function init(mod: { typescript: typeof tslib }) {
                     case tslib.SyntaxKind.PropertyAccessExpression:
                         let parentNode = current.getChildAt(0);
                         let propNode = current.getChildAt(2);
-                        // TODO: some situation like:
-                        // class.someStringField.value = "somestr"; class.someStringField.value.?
                         let propWriteRef = undefined;
                         let propName = propNode.getText();
                         if(!["value", "$new", "$init", "overload"].includes(propName))
@@ -182,7 +180,7 @@ function init(mod: { typescript: typeof tslib }) {
                         return undefined;
                     // parse this and params from:
                     // func.impl = (...args)
-                    // Java.choose => onMatch: function (instance)
+                    // TODO: Java.choose => onMatch: function (instance)
                     case tslib.SyntaxKind.ThisKeyword:
                     case tslib.SyntaxKind.Parameter:
                         let target = current;
