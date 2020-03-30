@@ -12,12 +12,11 @@
 	"scripts": {
 		"compile": "tsc -p ."
 	},
-	"devDependencies": {
-		"@types/node": "^12.11.7",
-		"electron-rebuild": "^1.10.1",
-		"typescript": "^3.8.3"
-	},
+	"devDependencies": {},
 	"dependencies": {
+		"@types/node": "^12.12.32",
+		"electron-rebuild": "^1.10.1",
+		"typescript": "^3.8.3",
 		"java": "^0.12.1"
 	}
 }
