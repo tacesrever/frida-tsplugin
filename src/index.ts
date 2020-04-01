@@ -275,7 +275,7 @@ function init(mod: { typescript: typeof tslib }) {
                 } else {
                     let klass = parent as ClassInfoProvider;
                     let method = klass.getMethodInfoProvider(funcName);
-                    if(method.hasOverload())
+                    if(!method.hasOverload())
                         return method.getReturnInfoProvider();
                     let argTypes = findArgTypesForCallExpr(source, callExpr);
                     if(argTypes === undefined) return undefined;
