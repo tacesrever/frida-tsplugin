@@ -30,7 +30,6 @@ if(Java.available) {
             wrapperProps = wrapperProps.concat(Object.getOwnPropertyNames(prototype));
             prototype = prototype.__proto__;
         }
-        (global as any).view = Java.use("android.view.View");
     });
     
     interface getJavaClassInfoParams {
