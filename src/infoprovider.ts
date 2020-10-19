@@ -215,7 +215,7 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
             if(argTypes.length === types.argumentTypes.length) {
                 let hit = true;
                 for(let i = 0; hit && i < types.argumentTypes.length; ++i) {
-                    if(argTypes[i] !== null && types[i] !== argTypes[i]) {
+                    if(argTypes[i] !== null && types.argumentTypes[i] !== argTypes[i]) {
                         hit = false;
                         let argClass = javaLoader.getProviderByName(argTypes[i]);
                         for(const subType of argClass.getExtendClassNames()) {
