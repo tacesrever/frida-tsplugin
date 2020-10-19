@@ -120,7 +120,6 @@ function init(mod: { typescript: typeof tslib }) {
 
         function findInfoProviderForExpr(source: tslib.SourceFile, node: tslib.Node)
             : ClassInfoProvider | FieldInfoProvider | MethodInfoProvider {
-            log("findInfoProviderForExpr", node.getText());
             let current = node;
             while (true) {
                 switch(current.kind) {
@@ -236,7 +235,6 @@ function init(mod: { typescript: typeof tslib }) {
                             return javaLoader.getProviderByName(method.getParamClassNames()[i]);
                         }
                     default:
-                        log("misskind", current.kind);
                         return undefined;
                 }
             }

@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 
-let logfile: string = undefined;
+let logfile: string = null;
 export function log(...msg: {toString: () => string}[]) {
-    if(logfile === undefined) return;
+    if(logfile === null) return;
     fs.appendFileSync(logfile, msg.map(s => {
         if(s === undefined) return 'undefined';
         if(s === null) return 'null';

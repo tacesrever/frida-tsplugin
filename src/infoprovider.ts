@@ -219,7 +219,7 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
                         hit = false;
                         let argClass = javaLoader.getProviderByName(argTypes[i]);
                         for(const subType of argClass.getExtendClassNames()) {
-                            if(subType === types[i]) {
+                            if(subType === types.argumentTypes[i]) {
                                 hit = true;
                                 break;
                             }
