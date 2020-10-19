@@ -1,7 +1,6 @@
 import * as tslib from "typescript/lib/tsserverlibrary";
-import * as java from "java";
-import * as fs from "fs";
 import {log} from './logger';
+import request from 'sync-request';
 
 export interface ClassInfoProvider {
     getClassName: () => string;
@@ -35,34 +34,43 @@ export interface FieldInfoProvider {
     getDeclare: () => string;
 }
 
+declare interface JavaMethodInfo {
+    returnType: string
+    argumentTypes: string[]
+}
+declare interface JavaClassInfo {
+    alltypes: string[]
+    fields: {
+        [index: string]: string
+    }
+    methods: {
+        [index: string]: JavaMethodInfo[]
+    }
+    wrapperProps: string[]
+}
 let javaLoader: JavaProviderLoader;
 export class JavaProviderLoader {
     classCache: Map<string, JavaClassInfoProvider> = new Map();
-    constructor(classpaths: string[]) {
-        classpaths.forEach(path => {
-            if(fs.existsSync(path)) {
-                const stat = fs.lstatSync(path);
-                if(stat.isDirectory()) {
-                    try {
-                        java.classpath.pushDir(path);
-                    } catch(e) { log(e.stack) };
-                }
-                else if(stat.isFile()) {
-                    try {
-                        java.classpath.push(path);
-                    } catch(e) { log(e.stack) };
-                }
-            } else {
-            }
-        });
+    baseurl: string
+    constructor(private config: any) {
+        this.baseurl = `http://${config.host || "127.0.0.1"}:${config.port || "28042"}`;
         javaLoader = this;
     }
 
     getProviderByName(className: string): JavaClassInfoProvider {
-        if(this.classCache[className] === undefined) {
-            this.classCache[className] = new JavaClassInfoProvider(className);
+        if(this.classCache[className] !== undefined) {
+            return this.classCache[className];
         }
+        const res = request("GET", this.baseurl + "/getJavaClassInfo?className=" + className, {
+            timeout: 3000
+        });
+        if(res.statusCode !== 200) {
+            this.classCache[className] = null;
+            return null;
+        }
+        this.classCache[className] = new JavaClassInfoProvider(JSON.parse(res.getBody("utf-8")));
         return this.classCache[className];
+        
     }
 }
 
@@ -74,50 +82,25 @@ export class ObjCProviderLoader {
 }
 
 export class JavaClassInfoProvider implements ClassInfoProvider {
-    klass: any;
-    extends: string[] = [];
     methods: Map<string, JavaMethodInfoProvider> = new Map();
     fields: Map<string, JavaFieldInfoProvider> = new Map();
     cachedEntries: tslib.CompletionEntry[] = undefined;
-    constructor(public className: string) {
-        this.klass = java.findClassSync(className);
-        
-        this.klass.getInterfacesSync().forEach(i => {
-            this.extends.push(i.getNameSync());
-        });
-
-        this.methods.set("$new", new JavaMethodInfoProvider("$new"));
-        this.methods.set("$init", new JavaMethodInfoProvider("$init"));
-        this.klass.getConstructorsSync().forEach(method => {
-            this.methods.get("$new").addOverload(method);
-            this.methods.get("$init").addOverload(method);
-        });
-        let currentClass = this.klass;
-        while(currentClass) {
-            currentClass.getDeclaredMethodsSync().forEach(method => {
-                const methodName: string = method.getNameSync();
-                if(this.methods.get(methodName) === undefined) {
-                    this.methods.set(methodName, new JavaMethodInfoProvider(methodName));
-                }
-                this.methods.get(methodName).addOverload(method);
-            });
-            currentClass.getDeclaredFieldsSync().forEach(field => {
-                const fieldName: string = field.getNameSync();
-                if(this.fields.get(fieldName) === undefined) {
-                    this.fields.set(fieldName, new JavaFieldInfoProvider(field));
-                }
-            });
-            this.extends.push(currentClass.getNameSync());
-            currentClass = currentClass.getSuperclassSync();
+    constructor(public classInfo: JavaClassInfo) {
+        for(const name in classInfo.methods) {
+            this.methods.set(name, new JavaMethodInfoProvider(classInfo.alltypes[0], name, classInfo.methods[name]));
+        }
+        this.methods.set("$init", this.methods.get("$new"));
+        for(const name in classInfo.fields) {
+            this.fields.set(name, new JavaFieldInfoProvider(classInfo.alltypes[0], name, classInfo.fields[name]));
         }
     }
 
     getClassName() {
-        return this.className;
+        return this.classInfo.alltypes[0];
     }
 
     getExtendClassNames() {
-        return this.extends;
+        return this.classInfo.alltypes;
     }
 
     getPropInfoProvider(name: string) {
@@ -126,8 +109,6 @@ export class JavaClassInfoProvider implements ClassInfoProvider {
     }
 
     getFieldInfoProvider(fieldName: string) {
-        while(fieldName[0] === '_' && this.fields.get(fieldName) === undefined)
-            fieldName = fieldName.substr(1);
         return this.fields.get(fieldName);
     }
 
@@ -136,7 +117,7 @@ export class JavaClassInfoProvider implements ClassInfoProvider {
     }
 
     getDeclare() {
-        return this.klass.toString();
+        return "class " + this.classInfo.alltypes[0];
     }
 
     getCompletionDetail(name: string) {
@@ -176,54 +157,31 @@ export class JavaClassInfoProvider implements ClassInfoProvider {
     getCompletionEntries(originEntries?: tslib.CompletionEntry[]) {
         if(this.cachedEntries !== undefined) return this.cachedEntries;
         this.cachedEntries = [];
-        const fridaClassWarpperProps = {
-            // declared in @types/frida-gum:
-            "$alloc": tslib.ScriptElementKind.memberFunctionElement,
-            "class": tslib.ScriptElementKind.memberVariableElement,
-            "$className": tslib.ScriptElementKind.memberVariableElement,
-            "$super": tslib.ScriptElementKind.memberVariableElement,
-            // currently not (or internal):
-            "$dispose": tslib.ScriptElementKind.memberFunctionElement,
-            "$clone": tslib.ScriptElementKind.memberFunctionElement,
-            "$list": tslib.ScriptElementKind.memberFunctionElement,
-            "$ownMembers": tslib.ScriptElementKind.memberVariableElement,
-            "$s": tslib.ScriptElementKind.memberVariableElement,
-            "toJSON": tslib.ScriptElementKind.memberFunctionElement,
-            "$isSameObject": tslib.ScriptElementKind.memberFunctionElement,
-            "$getCtor": tslib.ScriptElementKind.memberFunctionElement,
-            "$borrowClassHandle": tslib.ScriptElementKind.memberFunctionElement,
-            "$copyClassHandle": tslib.ScriptElementKind.memberFunctionElement,
-            "$has": tslib.ScriptElementKind.memberFunctionElement,
-            "$find": tslib.ScriptElementKind.memberFunctionElement
-        }
-        for(const name in fridaClassWarpperProps) {
+        for(const name of this.classInfo.wrapperProps) {
             let entry: tslib.CompletionEntry = {
                 name: name,
                 sortText: name,
-                kind: fridaClassWarpperProps[name],
+                kind: tslib.ScriptElementKind.memberVariableElement,
                 source: ""
             };
             this.cachedEntries.push(entry);
         }
-        let usedNames = [];
+        
         this.methods.forEach((method, name) => {
-            if(!usedNames.includes(name)) usedNames.push(name);
             let entry: tslib.CompletionEntry = {
                 name: name,
                 sortText: name,
                 kind: tslib.ScriptElementKind.memberFunctionElement,
-                source: "Java_c:" + this.className
+                source: "Java_c:" + this.classInfo.alltypes[0]
             };
             this.cachedEntries.push(entry);
         });
 
         this.fields.forEach((field, name) => {
-            while(usedNames.includes(name)) name = '_' + name;
-            usedNames.push(name);
             let entry: tslib.CompletionEntry = {
                 sortText: name,
                 name: name,
-                source: "Java_c:" + this.className,
+                source: "Java_c:" + this.classInfo.alltypes[0],
                 kind: tslib.ScriptElementKind.memberVariableElement
             };
             this.cachedEntries.push(entry);
@@ -233,10 +191,8 @@ export class JavaClassInfoProvider implements ClassInfoProvider {
 }
 
 export class JavaMethodInfoProvider implements MethodInfoProvider {
-    methods: any[] = [];
-    argTypes: string[][] = [];
     cachedEntries: tslib.CompletionEntry[] = undefined;
-    constructor(public methodName: string) {
+    constructor(public className: string, public name: string, public methodInfo: JavaMethodInfo[]) {
     }
 
     getClassName() {
@@ -244,29 +200,21 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
     }
 
     hasOverload() {
-        return this.methods.length > 1;
-    }
-
-    addOverload(method) {
-        this.methods.push(method);
-        const argTypes: string[] = method.getParameterTypesSync().map(typeclz => {
-            return typeclz.getNameSync();
-        });
-        this.argTypes.push(argTypes);
+        return this.methodInfo.length > 1;
     }
 
     getPropInfoProvider(name: string) {
         return undefined;
     }
 
-    getJavaWarpper(argTypes?: string[]) {
+    getMethodInfo(argTypes?: string[]) {
         if(argTypes === undefined)
-            return this.methods[0];
+            return this.methodInfo[0];
         let midx = 0;
-        for(const types of this.argTypes) {
-            if(argTypes.length === types.length) {
+        for(const types of this.methodInfo) {
+            if(argTypes.length === types.argumentTypes.length) {
                 let hit = true;
-                for(let i = 0; hit && i < types.length; ++i) {
+                for(let i = 0; hit && i < types.argumentTypes.length; ++i) {
                     if(argTypes[i] !== null && types[i] !== argTypes[i]) {
                         hit = false;
                         let argClass = javaLoader.getProviderByName(argTypes[i]);
@@ -278,7 +226,7 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
                         }
                     }
                 }
-                if(hit) return this.methods[midx];
+                if(hit) return this.methodInfo[midx];
             }
             midx++;
         }
@@ -286,31 +234,27 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
     }
 
     getOverloadInfoProvider(argTypes?: string[]) {
-        const method = this.getJavaWarpper(argTypes);
+        const method = this.getMethodInfo(argTypes);
         if(method === undefined) return undefined;
-        const aMethod = new JavaMethodInfoProvider(this.methodName);
-        aMethod.addOverload(method);
+        const aMethod = new JavaMethodInfoProvider(this.className, this.name, [method]);
         return aMethod;
     }
 
     getReturnClassName(argTypes?: string[]): string {
-        const method = this.getJavaWarpper(argTypes);
+        const method = this.getMethodInfo(argTypes);
         if(method === undefined) return undefined;
-        if(method.getReturnTypeSync !== undefined) {
-            return method.getReturnTypeSync().getNameSync();
-        }
-        // is constructor method
-        return method.getNameSync();
+        return method.returnType;
     }
 
     getDeclare(argTypes?: string[]) {
-        const method = this.getJavaWarpper(argTypes);
+        const method = this.getMethodInfo(argTypes);
         if(method === undefined) return undefined;
-        return method.toString();
+        if(method.argumentTypes.length === 0) return `${method.returnType} ${this.className}.${this.name}()`;
+        else return `${method.returnType} ${this.className}.${this.name}('${method.argumentTypes.join("', '")}')`;
     }
 
     getParamClassNames() {
-        return this.argTypes[0];
+        return this.methodInfo[0].argumentTypes;
     }
 
     getReturnInfoProvider(argTypes?: string[]) {
@@ -340,9 +284,8 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
 
     getCompletionEntries(originEntries?: tslib.CompletionEntry[]) {
         if(this.cachedEntries !== undefined) return this.cachedEntries;
-        if(this.methods.length === 0) return undefined;
+        if(this.methodInfo.length === 0) return undefined;
         this.cachedEntries = [];
-        const parentClassName = this.methods[0].getDeclaringClassSync().getNameSync();
         const fridaMethodWarpperProps = [
             "overloads",
             "methodName",
@@ -360,24 +303,18 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
             this.cachedEntries.push({
                 sortText: fieldName,
                 name: fieldName,
-                source: "Java_m:" + parentClassName + '.' + this.methodName,
+                source: "Java_m:" + this.className + '.' + this.name,
                 kind: tslib.ScriptElementKind.memberVariableElement
             });
         });
 
-        this.argTypes.forEach(argTypes => {
-        let overloadArg = '';
-            if(argTypes.length > 0) {
-                argTypes.forEach(type => {
-                    overloadArg += "'" + type + "', "
-                });
-                overloadArg = overloadArg.slice(0, -2);
-            }
+        this.methodInfo.forEach(info => {
+            let overloadArg = "'" + info.argumentTypes.join("', '") + "'";
 
             this.cachedEntries.push({
                 sortText: "overload(",
                 name: "overload(" + overloadArg + ")",
-                source: "Java_m:" + parentClassName + '.' + this.methodName,
+                source: "Java_m:" + this.className + '.' + this.name,
                 kind: tslib.ScriptElementKind.memberVariableElement
             });
         });
@@ -387,23 +324,23 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
 
 export class JavaFieldInfoProvider implements FieldInfoProvider {
     cachedEntries: tslib.CompletionEntry[] = undefined;
-    constructor(private field) {
+    constructor(public className: string, public name: string, public type: string) {
     }
 
     getDeclare() {
-        return this.field.toString();
+        return `${this.type} ${this.className}.${this.name}`;
     }
 
     getClassName() {
-        return this.field.getTypeSync().getNameSync();
+        return this.type;
     }
 
     getPropInfoProvider(name: string) {
         if(name === 'value') {
-            return javaLoader.getProviderByName(this.field.getTypeSync().getNameSync());
+            return javaLoader.getProviderByName(this.type);
         }
         if(name === 'holder') {
-            return javaLoader.getProviderByName(this.field.getDeclaringClassSync().getNameSync());
+            return javaLoader.getProviderByName(this.className);
         }
         return undefined;
     }
@@ -419,13 +356,13 @@ export class JavaFieldInfoProvider implements FieldInfoProvider {
         }
         if(name === 'value') {
             details.displayParts.push({
-                text: this.field.toString(),
+                text: this.getDeclare(),
                 kind: 'text'
             });
         }
         else if(name === 'holder') {
             details.displayParts.push({
-                text: this.field.getDeclaringClassSync().toString(),
+                text: javaLoader.getProviderByName(this.className).getDeclare(),
                 kind: 'text'
             });
         }
@@ -440,14 +377,12 @@ export class JavaFieldInfoProvider implements FieldInfoProvider {
             "fieldType",
             "fieldReturnType"
         ];
-        const parentClassName = this.field.getDeclaringClassSync().getNameSync();
-        const fieldName = this.field.getNameSync();
         this.cachedEntries = [];
         fridaFieldWarpperProps.forEach(propName => {
             this.cachedEntries.push({
                 sortText: propName,
                 name: propName,
-                source: "Java_f:" + parentClassName + '.' + fieldName,
+                source: "Java_f:" + this.className + '.' + this.name,
                 kind: tslib.ScriptElementKind.memberVariableElement
             });
         })

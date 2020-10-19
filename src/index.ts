@@ -16,7 +16,7 @@ function init(mod: { typescript: typeof tslib }) {
             proxy[k] = (...args: Array<{}>) => x.apply(info.languageService, args);
         }
         
-        const javaLoader = new JavaProviderLoader(info.config.classPaths);
+        const javaLoader = new JavaProviderLoader(info.config);
 
         proxy.getCompletionsAtPosition = (fileName: string, position: number, options: tslib.GetCompletionsAtPositionOptions) => {
             const source = getSourceFile(fileName);
@@ -120,7 +120,7 @@ function init(mod: { typescript: typeof tslib }) {
 
         function findInfoProviderForExpr(source: tslib.SourceFile, node: tslib.Node)
             : ClassInfoProvider | FieldInfoProvider | MethodInfoProvider {
-            log('find InfoProvider for', node.getText());
+            log("findInfoProviderForExpr", node.getText());
             let current = node;
             while (true) {
                 switch(current.kind) {
@@ -148,9 +148,10 @@ function init(mod: { typescript: typeof tslib }) {
                             tslib.SyntaxKind.BinaryExpression, 
                             tslib.SyntaxKind.PropertyAssignment,
                             tslib.SyntaxKind.VariableDeclaration,
-                        ].includes(writeExpr.kind))
+                        ].includes(writeExpr.kind)) {
                             return undefined;
-                        log("pass assign def:", writeExpr.getText());
+                        }
+                            
                         current = writeExpr.getChildAt(2);
                         break;
                     case tslib.SyntaxKind.ElementAccessExpression:
@@ -163,7 +164,9 @@ function init(mod: { typescript: typeof tslib }) {
                             propWriteRef = findLastWriteRef(source.fileName, propNode.getEnd());
                         if(propWriteRef === undefined) {
                             let provider = findInfoProviderForExpr(source, parentNode);
-                            if(provider === undefined) return undefined;
+                            if(provider === undefined) {
+                                return undefined;
+                            }
                             return provider.getPropInfoProvider(propNode.getText());
                         }
                         let tmpExpr = getNodeAtPosition(source, propWriteRef.reference.textSpan.start).parent;
@@ -233,6 +236,7 @@ function init(mod: { typescript: typeof tslib }) {
                             return javaLoader.getProviderByName(method.getParamClassNames()[i]);
                         }
                     default:
+                        log("misskind", current.kind);
                         return undefined;
                 }
             }

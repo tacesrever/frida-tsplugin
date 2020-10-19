@@ -4,10 +4,12 @@
         "target": "es2016",
         "outDir": "dist",
         "rootDir": "src",
+        "allowJs": true,
         "declaration": true
     },
     "exclude": [
         "dist",
-        "node_modules"
+        "node_modules",
+        "agent"
     ]
 }

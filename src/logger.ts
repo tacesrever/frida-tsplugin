@@ -12,4 +12,5 @@ export function log(...msg: {toString: () => string}[]) {
 
 export function setLogfile(filename: string) {
     logfile = filename;
+    fs.writeFileSync(logfile, "");
 }
