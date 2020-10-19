@@ -15,8 +15,10 @@ add plugin config in tsconfig.json after clone frida-agent-example:
             ...
             ,
             "plugins": [{
-                "name": path_to_tsplugin,
-                "logfile"?: path_to_logfile
+                "name": path to tsplugin,
+                "host"?: ip of target device, default is "127.0.0.1"(use adb forward tcp:port tcp:port)
+                "port"?: listen port in tsplugin.ts, default is 28042
+                "logfile"?: path to logfile
             }]
         }
     }
