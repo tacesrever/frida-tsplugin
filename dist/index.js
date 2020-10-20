@@ -277,7 +277,7 @@ function init(mod) {
                 }
                 else if (funcName === 'overload') {
                     let method = parent;
-                    let argTypes = findArgTypesForCallExpr(source, callExpr);
+                    let argTypes = callExpr.arguments.map(expr => findStringLiteral(source, expr));
                     if (argTypes === undefined)
                         return undefined;
                     return method.getOverloadInfoProvider(argTypes);

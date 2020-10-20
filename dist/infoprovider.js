@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JavaFieldInfoProvider = exports.JavaMethodInfoProvider = exports.JavaClassInfoProvider = exports.ObjCProviderLoader = exports.JavaProviderLoader = void 0;
 const tslib = require("typescript/lib/tsserverlibrary");
+const logger_1 = require("./logger");
 const sync_request_1 = require("sync-request");
 let javaLoader;
 class JavaProviderLoader {
@@ -208,6 +209,7 @@ class JavaMethodInfoProvider {
         return className ? javaLoader.getProviderByName(className) : undefined;
     }
     getCompletionDetail(name) {
+        logger_1.log("getCompletionDetail", name);
         if (name.indexOf("overload(") !== 0)
             return undefined;
         let argTypes = undefined;
@@ -227,13 +229,13 @@ class JavaMethodInfoProvider {
         return details;
     }
     getCompletionEntries(originEntries) {
+        logger_1.log("getCompletionEntries", JSON.stringify(this.methodInfo));
         if (this.cachedEntries !== undefined)
             return this.cachedEntries;
         if (this.methodInfo.length === 0)
             return undefined;
         this.cachedEntries = [];
         const fridaMethodWarpperProps = [
-            "overloads",
             "methodName",
             "holder",
             "type",
@@ -245,6 +247,9 @@ class JavaMethodInfoProvider {
             "clone",
             "invoke"
         ];
+        if (this.methodInfo.length > 1) {
+            fridaMethodWarpperProps.push("overloads");
+        }
         fridaMethodWarpperProps.forEach(fieldName => {
             this.cachedEntries.push({
                 sortText: fieldName,
@@ -253,15 +258,17 @@ class JavaMethodInfoProvider {
                 kind: tslib.ScriptElementKind.memberVariableElement
             });
         });
-        this.methodInfo.forEach(info => {
-            let overloadArg = "'" + info.argumentTypes.join("', '") + "'";
-            this.cachedEntries.push({
-                sortText: "overload(",
-                name: "overload(" + overloadArg + ")",
-                source: "Java_m:" + this.className + '.' + this.name,
-                kind: tslib.ScriptElementKind.memberVariableElement
+        if (this.methodInfo.length > 1) {
+            this.methodInfo.forEach(info => {
+                let overloadArg = "'" + info.argumentTypes.join("', '") + "'";
+                this.cachedEntries.push({
+                    sortText: "overload(",
+                    name: "overload(" + overloadArg + ")",
+                    source: "Java_m:" + this.className + '.' + this.name,
+                    kind: tslib.ScriptElementKind.memberVariableElement
+                });
             });
-        });
+        }
         return this.cachedEntries;
     }
 }
