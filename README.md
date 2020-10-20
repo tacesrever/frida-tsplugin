@@ -1,21 +1,25 @@
 
-# typescript plugin  
+# frida-tsplugin  
 AutoComplete plugin for frida's java warpper.  
 
 ![](./example.png)
 
-# Useage  
-* after clone, run  
+# Usage  
+## install  
 ```
-npm install
-npm run compile
+$ git clone https://github.com/tacesrever/frida-tsplugin.git
+$ cd frida-tsplugin
+$ npm install
 ```
-* compile agent/tsplugin.ts by frida-compile, and load it in target app;  
-or here is a compiled script file at agent/tsplugin.js (target v8),  
-you can load it by `frida -U --runtime=v8 -l tsplugin.js targetName`  
-then run `adb forward tcp:28042 tcp:28042`.  
+## load  
+```
+$ frida -U --runtime=v8 -l agent/tsplugin.js target  
+$ adb forward tcp:28042 tcp:28042  
+```
+or you can edit the port in agent/tsplugin.ts and compile it by frida-compile.  
 
-* add plugin config in tsconfig.json after clone frida-agent-example:  
+add plugin in `frida-agent-example/tsconfig.json` after setup [frida-agent-example](https://github.com/oleavr/frida-agent-example):  
+
 ```
 {
     "compilerOptions": {
@@ -30,3 +34,4 @@ then run `adb forward tcp:28042 tcp:28042`.
     }
 }
 ```
+
