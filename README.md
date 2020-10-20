@@ -5,7 +5,11 @@ AutoComplete plugin for frida's java warpper.
 ![](./example.png)
 
 # Useage  
-* run `npm install` after clone;  
+* after clone, run  
+```
+npm install
+npm run compile
+```
 * compile agent/tsplugin.ts by frida-compile, and load it in target app;  
 or here is a compiled script file at agent/tsplugin.js (target v8),  
 you can load it by `frida -U --runtime=v8 -l tsplugin.js targetName`  
