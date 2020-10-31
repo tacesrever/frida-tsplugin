@@ -12,8 +12,9 @@ $ cd frida-tsplugin
 $ npm install
 ```
 ## load  
+with frida ^14.0.0:
 ```
-$ frida -U --runtime=v8 -l agent/tsplugin.js target  
+$ frida -U -l agent/tsplugin.js target  
 $ adb forward tcp:28042 tcp:28042  
 ```
 or you can edit the port in agent/tsplugin.ts and compile it by frida-compile.  
