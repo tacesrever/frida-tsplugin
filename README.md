@@ -45,4 +45,4 @@ if nothing happen after load, you can:
 - Ensure frida-tsplugin's typescript version same as vscode's.  
 > check typescript version in vscode's install dir `Microsoft VS Code( Insiders)/resources/app/extensions/node_modules/typescript/package.json` and in frida-tsplugin/package.json's dependencies, if not same, you should run `npm i typescript@version from vscode` then `tsc -p .` under frida-tsplugin.  
 - Ensure agent service is on  
-> open http://127.0.0.1:28042/getJavaClassInfo?className=java.lang.String to see if any content.  
+> open http://127.0.0.1:28042/getJavaClassInfo?className=java.lang.String to see if any content. The target app may need be in the foreground with phone's screen on for service to response.  
