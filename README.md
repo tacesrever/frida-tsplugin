@@ -35,4 +35,14 @@ add plugin in `frida-agent-example/tsconfig.json` after setup [frida-agent-examp
     }
 }
 ```
+## debug  
 
+if nothing happen after load, you can:  
+- Ensure plugin is loaded  
+> set logfile path mentioned above, if the logfile didn't created, the plugin may fail to load.  
+> press F1, type 'Ty' then click Typescript: Open TS Server log, find 'frida-tsplugin' to see if plguin load sucessed.  
+> 
+- Ensure frida-tsplugin's typescript version same as vscode's.  
+> check typescript version in vscode's install dir `Microsoft VS Code( Insiders)/resources/app/extensions/node_modules/typescript/package.json` and in frida-tsplugin/package.json's dependencies, if not same, you should run `npm i typescript@version from vscode` then `tsc -p .` under frida-tsplugin.  
+- Ensure agent service is on  
+> open http://127.0.0.1:28042/getJavaClassInfo?className=java.lang.String to see if any content.  

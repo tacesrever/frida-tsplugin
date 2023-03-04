@@ -43,7 +43,7 @@ function init(mod: { typescript: typeof tslib }) {
             }
             return oret;
         }
-        proxy.getCompletionEntryDetails = (fileName, position, name, options, source, pref) => {
+        proxy.getCompletionEntryDetails = (fileName, position, name, options, source, pref, data) => {
             log("getCompletionEntryDetails", name, source);
             if(source && source.indexOf("Java_") === 0) {
                 let [type, className] = source.substr(5).split(':');
@@ -62,7 +62,7 @@ function init(mod: { typescript: typeof tslib }) {
                     if(details !== undefined) return details;
                 }
             }
-            return tsLS.getCompletionEntryDetails(fileName, position, name, options, source, pref);
+            return tsLS.getCompletionEntryDetails(fileName, position, name, options, source, pref, data);
         }
         proxy.getQuickInfoAtPosition = (fileName, position) => {
             const info = tsLS.getQuickInfoAtPosition(fileName, position);
@@ -91,7 +91,7 @@ function init(mod: { typescript: typeof tslib }) {
                     text: provider.getDeclare(),
                     kind: 'text'
                 }]
-            } catch(e) { log(e.stack); }
+            } catch(e) { log(e); }
             return info;
         }
 
@@ -121,6 +121,7 @@ function init(mod: { typescript: typeof tslib }) {
         function findInfoProviderForExpr(source: tslib.SourceFile, node: tslib.Node)
             : ClassInfoProvider | FieldInfoProvider | MethodInfoProvider {
             let current = node;
+            log("findInfoProviderForExpr", node.getText(), node.kind);
             while (true) {
                 switch(current.kind) {
                     case tslib.SyntaxKind.CallExpression:

@@ -7,7 +7,7 @@ function init(mod) {
     function create(info) {
         const tsLS = info.languageService;
         if (info.config.logfile !== undefined)
-            logger_1.setLogfile(info.config.logfile);
+            (0, logger_1.setLogfile)(info.config.logfile);
         const proxy = Object.create(null);
         for (let k of Object.keys(info.languageService)) {
             const x = info.languageService[k];
@@ -19,7 +19,7 @@ function init(mod) {
             let oret = tsLS.getCompletionsAtPosition(fileName, position, options);
             try {
                 const completeFor = getNodeAtPosition(source, position).parent.getChildAt(0);
-                logger_1.log("trigger:", options.triggerCharacter, 'completeFor ' + completeFor.getText());
+                (0, logger_1.log)("trigger:", options.triggerCharacter, 'completeFor ' + completeFor.getText());
                 const provider = findInfoProviderForExpr(source, completeFor);
                 if (provider === undefined)
                     return oret;
@@ -39,12 +39,12 @@ function init(mod) {
                 }
             }
             catch (e) {
-                logger_1.log(e.stack);
+                (0, logger_1.log)(e.stack);
             }
             return oret;
         };
-        proxy.getCompletionEntryDetails = (fileName, position, name, options, source, pref) => {
-            logger_1.log("getCompletionEntryDetails", name, source);
+        proxy.getCompletionEntryDetails = (fileName, position, name, options, source, pref, data) => {
+            (0, logger_1.log)("getCompletionEntryDetails", name, source);
             if (source && source.indexOf("Java_") === 0) {
                 let [type, className] = source.substr(5).split(':');
                 if (type === 'c') {
@@ -64,7 +64,7 @@ function init(mod) {
                         return details;
                 }
             }
-            return tsLS.getCompletionEntryDetails(fileName, position, name, options, source, pref);
+            return tsLS.getCompletionEntryDetails(fileName, position, name, options, source, pref, data);
         };
         proxy.getQuickInfoAtPosition = (fileName, position) => {
             const info = tsLS.getQuickInfoAtPosition(fileName, position);
@@ -97,7 +97,7 @@ function init(mod) {
                     }];
             }
             catch (e) {
-                logger_1.log(e.stack);
+                (0, logger_1.log)(e);
             }
             return info;
         };
@@ -123,6 +123,7 @@ function init(mod) {
         }
         function findInfoProviderForExpr(source, node) {
             let current = node;
+            (0, logger_1.log)("findInfoProviderForExpr", node.getText(), node.kind);
             while (true) {
                 switch (current.kind) {
                     case tslib.SyntaxKind.CallExpression:
@@ -133,7 +134,7 @@ function init(mod) {
                         if (typeName !== undefined) {
                             typeName = typeName.trim();
                             if (typeName !== 'any' && typeName.indexOf('Java.Wrapper') !== 0) {
-                                logger_1.log("type missmatch:", typeName);
+                                (0, logger_1.log)("type missmatch:", typeName);
                                 return undefined;
                             }
                         }
@@ -425,7 +426,7 @@ function init(mod) {
                 }
             }
         }
-        logger_1.log("plugin loaded");
+        (0, logger_1.log)("plugin loaded");
         return proxy;
     }
     return { create };

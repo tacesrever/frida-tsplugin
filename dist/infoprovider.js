@@ -1,9 +1,19 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JavaFieldInfoProvider = exports.JavaMethodInfoProvider = exports.JavaClassInfoProvider = exports.ObjCProviderLoader = exports.JavaProviderLoader = void 0;
 const tslib = require("typescript/lib/tsserverlibrary");
 const logger_1 = require("./logger");
-const sync_request_1 = require("sync-request");
+const then_request_1 = require("then-request");
+const sp = require("synchronized-promise");
 let javaLoader;
 class JavaProviderLoader {
     constructor(config) {
@@ -13,12 +23,19 @@ class JavaProviderLoader {
         javaLoader = this;
     }
     getProviderByName(className) {
+        (0, logger_1.log)("getProviderByName", className);
         if (this.classCache[className] !== undefined) {
             return this.classCache[className];
         }
-        const res = sync_request_1.default("GET", this.baseurl + "/getJavaClassInfo?className=" + className, {
-            timeout: 3000
+        const doAsyncReq = () => __awaiter(this, void 0, void 0, function* () {
+            const res = yield (0, then_request_1.default)("GET", this.baseurl + "/getJavaClassInfo?className=" + className, {
+                timeout: 3000
+            });
+            return res;
         });
+        const doSyncReq = sp(doAsyncReq);
+        const res = doSyncReq();
+        (0, logger_1.log)(res.statusCode);
         if (res.statusCode !== 200) {
             this.classCache[className] = null;
             return null;
@@ -209,12 +226,13 @@ class JavaMethodInfoProvider {
         return className ? javaLoader.getProviderByName(className) : undefined;
     }
     getCompletionDetail(name) {
-        logger_1.log("getCompletionDetail", name);
         if (name.indexOf("overload(") !== 0)
             return undefined;
-        let argTypes = undefined;
+        let argTypes;
         if (name.length > 12)
             argTypes = name.slice(10, -2).split("', '");
+        if (name.length > 40)
+            name = name.substring(0, 30) + "...";
         let details = {
             name: name,
             kind: tslib.ScriptElementKind.memberFunctionElement,
@@ -224,12 +242,15 @@ class JavaMethodInfoProvider {
         };
         details.displayParts.push({
             text: this.getDeclare(argTypes),
-            kind: 'text'
+            kind: "text"
+        });
+        details.documentation.push({
+            text: this.getDeclare(argTypes),
+            kind: "text"
         });
         return details;
     }
     getCompletionEntries(originEntries) {
-        logger_1.log("getCompletionEntries", JSON.stringify(this.methodInfo));
         if (this.cachedEntries !== undefined)
             return this.cachedEntries;
         if (this.methodInfo.length === 0)
@@ -265,7 +286,7 @@ class JavaMethodInfoProvider {
                     sortText: "overload(",
                     name: "overload(" + overloadArg + ")",
                     source: "Java_m:" + this.className + '.' + this.name,
-                    kind: tslib.ScriptElementKind.memberVariableElement
+                    kind: tslib.ScriptElementKind.alias
                 });
             });
         }

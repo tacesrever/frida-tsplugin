@@ -1,6 +1,7 @@
 import * as tslib from "typescript/lib/tsserverlibrary";
 import {log} from './logger';
-import request from 'sync-request';
+import request from 'then-request';
+import * as sp from 'synchronized-promise';
 
 export interface ClassInfoProvider {
     getClassName: () => string;
@@ -58,12 +59,19 @@ export class JavaProviderLoader {
     }
 
     getProviderByName(className: string): JavaClassInfoProvider {
+        log("getProviderByName", className);
         if(this.classCache[className] !== undefined) {
             return this.classCache[className];
         }
-        const res = request("GET", this.baseurl + "/getJavaClassInfo?className=" + className, {
-            timeout: 3000
-        });
+        const doAsyncReq = async () => {
+            const res = await request("GET", this.baseurl + "/getJavaClassInfo?className=" + className, {
+                timeout: 3000
+            });
+            return res
+        }
+        const doSyncReq = (sp as any)(doAsyncReq);
+        const res = doSyncReq();
+        log(res.statusCode);
         if(res.statusCode !== 200) {
             this.classCache[className] = null;
             return null;
@@ -263,12 +271,11 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
     }
 
     getCompletionDetail(name: string) {
-        log("getCompletionDetail", name);
         if(name.indexOf("overload(") !== 0) return undefined;
-
-        let argTypes = undefined;
+        let argTypes: string[];
         if(name.length > 12)
             argTypes = name.slice(10, -2).split("', '");
+        if(name.length > 40) name = name.substring(0, 30) + "...";
         let details: tslib.CompletionEntryDetails = {
             name: name,
             kind: tslib.ScriptElementKind.memberFunctionElement,
@@ -278,13 +285,16 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
         }
         details.displayParts.push({
             text: this.getDeclare(argTypes),
-            kind: 'text'
+            kind: "text"
+        });
+        details.documentation.push({
+            text: this.getDeclare(argTypes),
+            kind: "text"
         });
         return details;
     }
 
     getCompletionEntries(originEntries?: tslib.CompletionEntry[]) {
-        log("getCompletionEntries", JSON.stringify(this.methodInfo));
         if(this.cachedEntries !== undefined) return this.cachedEntries;
         if(this.methodInfo.length === 0) return undefined;
         this.cachedEntries = [];
@@ -319,7 +329,7 @@ export class JavaMethodInfoProvider implements MethodInfoProvider {
                     sortText: "overload(",
                     name: "overload(" + overloadArg + ")",
                     source: "Java_m:" + this.className + '.' + this.name,
-                    kind: tslib.ScriptElementKind.memberVariableElement
+                    kind: tslib.ScriptElementKind.alias
                 });
             });
         }
