@@ -7,7 +7,8 @@
 	"repository": "",
 	"main": "dist/index.js",
 	"files": [
-		"dist"
+		"dist",
+		"agent"
 	],
 	"scripts": {
 		"compile": "tsc -p ."
